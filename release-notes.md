@@ -1,3 +1,41 @@
+# 1.1.93
+
+## 中文
+
+- 版本 **1.1.93**，宿主适配基线从 `0.2.1-rc.5` 抬到 **`0.2.2-rc.1`**（`dshTargets` 仍保留 `0.2.1-rc.5` / `0.2.1-rc.2`，旧宿主照常可用）。状态页不再对 0.2.2-rc.1 宿主报「未适配」。
+- **十条漂移全部重新对齐**（0.2.2 宿主改写原文 / 搬家 / 改缩进）：
+  - **#14**：`escalation` 的 `displayReason` 由内联多语言对象改成 `escalationDisplayReason(mode, justification)` 函数调用；新增 pattern 直接把 `outcome` 短路成 `"allowed-once"`。
+  - **#17**：`editIntent` 重构成 `this.requirePresent(target, actor, "edit")` 一行；补上这条 pattern，否则只有 write 半条命中，markers 要求两条 → 被判 drifted。
+  - **#40**：`system-prompt/assemble` 的 return 重排，多出 `tools` 字段；新增 `COMPLETE_PROMPT_WATERFALL_INJECT_TOOLS`，注入后把 `tools` 原样带回，避免工具面被清空。
+  - **#54**：交付物提示词从 `dsh-client-ui-deliverables` 拆到 `dsh-deliverable-file-references`；文件登记改为按原文匹配。
+  - **#60**：`run_code` 的沙箱加宽文案搬到 `dsh-tool-executor-ptc`（ESM 与 4 空格两份构建产物都覆盖）。
+  - **#62**：审批降级 `serviceAsk` 搬进 `dsh-tools/lib/pipeline.js`。
+  - **#67**：`decision.messages` 守卫外层多包了一层 `try`，缩进 4 tab → 5 tab，新增对应 pattern。
+  - **#74**：`preStep` 的 `assemble` 改成多行对象调用，改为在 `inbox.claim` + `model.current()` 之间挂 prepare 钩子。
+  - **#76**：用户自造 unrestricted 预设改用块标量 `prefix: |` 写人设；新增块标量形态的 pattern，并给这条软补丁加 `softSettle`（没有残留身份句就算完成，不再误报漂移）。
+  - **#88**：strict needle 之前只认 #87 打过的中间态；新增一条直接从干净宿主产出 strict 版的 pattern，链式依赖不会再被误判成上游漂移。
+- **新增 `existingMatching()` 文件登记助手**：同一段文案在官方重构后可能在包里搬家，多候选一起登记时那条「存在但不含原文」的旧路径会把整条补丁从 applied 拖成 drifted。现在只登记真的承载原文（或打完后的 marker）的文件，一条都不命中时退回旧行为，漂移照旧可见。
+- **验证**：新增 `scripts/verify-022-rc1.mjs` —— 把 0.2.2-rc.1 宿主里被登记的文件复制到临时副本，在副本上真打一遍全部补丁，核对「打前无漂移 / 打完无 pending、无 drifted / 每个改写的 .js 语法合法（node --check）/ marker 真的落地」。真实宿主只读，一个字节不写。当前结果：86 条补丁全部 applied，0 drifted，0 pending，0 语法错误，0 marker 缺失。
+- **文档**：中 / 英 / 日三份 README 的支持矩阵同步到 0.2.2-rc.1。
+
+## English
+
+- **1.1.93**, host baseline raised from `0.2.1-rc.5` to **`0.2.2-rc.1`** (`dshTargets` keeps `0.2.1-rc.5` / `0.2.1-rc.2`, so older hosts still work). The status page no longer reports a 0.2.2-rc.1 host as unsupported.
+- **All ten drifts realigned** (the 0.2.2 host reworded, moved, or re-indented the anchors):
+  - **#14**: `displayReason` became `escalationDisplayReason(mode, justification)`; a new pattern short-circuits `outcome` to `"allowed-once"`.
+  - **#17**: `editIntent` collapsed into `this.requirePresent(target, actor, "edit")`; without a matching pattern only the write half applied and the two required markers never both landed.
+  - **#40**: the `system-prompt/assemble` return was reshuffled and now carries `tools`; `COMPLETE_PROMPT_WATERFALL_INJECT_TOOLS` keeps `tools` intact after injection.
+  - **#54**: the deliverable prompt moved from `dsh-client-ui-deliverables` to `dsh-deliverable-file-references`; the file key now resolves by content.
+  - **#60**: the `run_code` escalation copy moved to `dsh-tool-executor-ptc` (both the ESM and the 4-space build are covered).
+  - **#62**: the approval fallback `serviceAsk` moved to `dsh-tools/lib/pipeline.js`.
+  - **#67**: the `decision.messages` guard gained an outer `try` (4 → 5 tabs); a matching pattern was added.
+  - **#74**: `preStep` now calls `assemble` with a multi-line object; the prepare hook hangs between `inbox.claim` and `model.current()`.
+  - **#76**: user-made unrestricted presets write their persona as a block scalar (`prefix: |`); that shape is matched now and the soft patch is marked `softSettle` so an absent identity sentence counts as done instead of drift.
+  - **#88**: the strict needle used to match only the #87 intermediate state; a new pattern emits the strict version straight from a pristine host, so the chain is no longer misreported as upstream drift.
+- **New `existingMatching()` file resolver**: official refactors move copy between packages, and registering every candidate made one "exists but no longer holds the text" path drag the whole patch from applied to drifted. Only files that actually carry the original text (or the post-apply marker) are registered now; when nothing matches it falls back to the old behaviour, so genuine drift stays visible.
+- **Verification**: new `scripts/verify-022-rc1.mjs` copies every registered host file into a temp mirror, applies the full patch set there, then asserts no drift before, no pending/drifted after, `node --check` on every rewritten `.js`, and that every marker really landed. The live host is read-only — not a byte is written. Current result: all 86 patches applied, 0 drifted, 0 pending, 0 syntax errors, 0 missing markers.
+- **Docs**: the host support matrix in the Chinese, English and Japanese READMEs now targets 0.2.2-rc.1.
+
 # 1.1.92
 
 ## 中文
